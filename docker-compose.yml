@@ -1,0 +1,62 @@
+services:
+  mariadb:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: HardPass@123
+      MARIADB_DATABASE: COOPER_FILME
+      MARIADB_USER: script_manager
+      MARIADB_PASSWORD: ScriptManager@123
+    ports:
+      - 3307:3306
+    networks:
+      - backend
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    depends_on:
+      - mariadb
+    environment:
+      DB_URL: mariadb
+      DB_PORT: 3306
+      DB_USER: script_manager
+      DB_PASS: ScriptManager@123
+      JWT_SECRET: $2a$12$7SCBgxFS872zcfO2CZjSQeEz7LAFfmMFnpE0ezJulSclc9lRzrjEK
+    networks:
+      - backend
+
+  script-service:
+    build:
+      context: ./script-service
+      dockerfile: Dockerfile
+    container_name: script-service
+    depends_on:
+      - mariadb
+    environment:
+      DB_URL: mariadb
+      DB_PORT: 3306
+      DB_USER: script_manager
+      DB_PASS: ScriptManager@123
+      JWT_SECRET: $2a$12$7SCBgxFS872zcfO2CZjSQeEz7LAFfmMFnpE0ezJulSclc9lRzrjEK
+    networks:
+      - backend
+    volumes:
+      - /tmp/logs/script-service:/logs
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - auth-service
+      - script-service
+    networks:
+      - backend
+
+networks:
+  backend:
